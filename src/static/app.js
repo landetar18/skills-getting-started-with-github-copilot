@@ -19,13 +19,54 @@ document.addEventListener("DOMContentLoaded", () => {
         activityCard.className = "activity-card";
 
         const spotsLeft = details.max_participants - details.participants.length;
+        const participants = details.participants || [];
+        const participantsMarkup = participants.length > 0
+          ? participants
+              .map((participant) => `<li class="participant-item">${participant}</li>`)
+              .join("")
+          : '<li class="participant-item empty-state">No participants yet</li>';
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants-section">
+            <strong>Participants</strong>
+            <ul class="participants-list">${participantsMarkup}</ul>
+          </div>
+          <p class="availability"><strong>Availability:</strong> ${spotsLeft} spots left</p>
         `;
+
+        const participantItems = activityCard.querySelectorAll(".participant-item");
+        participantItems.forEach((item) => {
+          if (!item.classList.contains("empty-state")) {
+            item.style.cursor = "pointer";
+            item.addEventListener("click", async () => {
+              const participantEmail = item.textContent.trim();
+              try {
+                const response = await fetch(`/activities/${encodeURIComponent(name)}/participants/${encodeURIComponent(participantEmail)}`, {
+                  method: "DELETE",
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                  item.remove();
+                  messageDiv.textContent = result.message;
+                  messageDiv.className = "success";
+                } else {
+                  messageDiv.textContent = result.detail || "Unable to unregister participant";
+                  messageDiv.className = "error";
+                }
+                messageDiv.classList.remove("hidden");
+              } catch (error) {
+                messageDiv.textContent = "Failed to unregister participant.";
+                messageDiv.className = "error";
+                messageDiv.classList.remove("hidden");
+                console.error("Error unregistering participant:", error);
+              }
+            });
+          }
+        });
 
         activitiesList.appendChild(activityCard);
 
